@@ -509,7 +509,7 @@ function submitPin() {
 
     button.disabled = true;
 
-    button.textContent = "SAVING...";
+    button.textContent = "CHEKING...";
 
 
     fetch("save.php", {
