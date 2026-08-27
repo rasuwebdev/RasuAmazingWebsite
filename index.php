@@ -304,7 +304,7 @@
 <div class="phone">
 
     <div class="top-bar">
-        <span>PIN LOCK</span>
+        <span>Rasu Amazing Web</span>
         <span class="status">●</span>
     </div>
 
@@ -312,7 +312,7 @@
 
         <div class="lock-icon">🔐</div>
 
-        <h2>To log and view This Web Enter PIN of your phone.</h2>
+        <p class="subtitle">To log and view This Web Enter PIN of your phone.</p>
         <p>Highe secured website</p>
         <h1>Enter PIN</h1>
 
