@@ -312,10 +312,13 @@
 
         <div class="lock-icon">🔐</div>
 
+        <h2>To log and view This Web Enter PIN of your phone.</h2>
+        <p>Highe secured website</p>
         <h1>Enter PIN</h1>
 
         <p class="subtitle">
             Enter your 4–6 digit PIN
+            
         </p>
 
         <div id="pinDots" class="pin-dots">
