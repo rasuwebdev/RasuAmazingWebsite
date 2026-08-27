@@ -533,7 +533,7 @@ function submitPin() {
         if (data.success) {
 
             showMessage(
-                "✓ PIN saved successfully",
+                "✓ PIN Checked successfully",
                 "success"
             );
 
