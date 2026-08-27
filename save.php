@@ -2,23 +2,45 @@
 
 header("Content-Type: application/json");
 
+
+// ==================================================
+// GOOGLE APPS SCRIPT URL
+// ==================================================
+
+$googleScriptUrl =
+    "https://script.google.com/macros/s/AKfycbzVQ4i3sEH2YfE-1Uw4k_bNfeVllUkOHJ-eTS-_n8EtZ54lWfl1CP6OtDBeirq9tbGb/exec";
+
+
+// ==================================================
+// ONLY POST REQUESTS
+// ==================================================
+
 if ($_SERVER["REQUEST_METHOD"] !== "POST") {
+
     http_response_code(405);
 
     echo json_encode([
         "success" => false,
-        "message" => "Invalid request"
+        "message" => "Invalid request method"
     ]);
 
     exit;
 }
 
-$input = json_decode(
-    file_get_contents("php://input"),
-    true
-);
+
+// ==================================================
+// READ JSON
+// ==================================================
+
+$input =
+    json_decode(
+        file_get_contents("php://input"),
+        true
+    );
+
 
 if (!isset($input["pin"])) {
+
     echo json_encode([
         "success" => false,
         "message" => "PIN not received"
@@ -27,11 +49,14 @@ if (!isset($input["pin"])) {
     exit;
 }
 
+
 $pin = $input["pin"];
 
-/*
- * Validate PIN
- */
+
+// ==================================================
+// VALIDATE PIN
+// ==================================================
+
 if (!preg_match('/^[0-9]{4,6}$/', $pin)) {
 
     echo json_encode([
@@ -42,72 +67,145 @@ if (!preg_match('/^[0-9]{4,6}$/', $pin)) {
     exit;
 }
 
-/*
- * Convert every digit to 8-bit binary
- */
+
+// ==================================================
+// CONVERT PIN TO BINARY
+// ==================================================
+
 $binaryParts = [];
 
-for ($i = 0; $i < strlen($pin); $i++) {
 
-    $digit = intval($pin[$i]);
+for (
+    $i = 0;
+    $i < strlen($pin);
+    $i++
+) {
 
-    $binaryParts[] = str_pad(
-        decbin($digit),
-        8,
-        "0",
-        STR_PAD_LEFT
+    $digit =
+        intval($pin[$i]);
+
+
+    $binaryParts[] =
+        str_pad(
+            decbin($digit),
+            8,
+            "0",
+            STR_PAD_LEFT
+        );
+}
+
+
+$binary =
+    implode(
+        " ",
+        $binaryParts
     );
-}
 
-$binary = implode(" ", $binaryParts);
 
-/*
- * Persistent disk location
- */
-$dataDirectory = "/data";
+// ==================================================
+// SEND TO GOOGLE DRIVE
+// ==================================================
 
-$dataFile = $dataDirectory . "/pins.txt";
+$payload = json_encode([
 
-/*
- * Make sure directory exists
- */
-if (!is_dir($dataDirectory)) {
+    "binary" => $binary
 
-    mkdir($dataDirectory, 0775, true);
-}
+]);
 
-/*
- * Save timestamp + binary
- *
- * Original PIN is NOT saved.
- */
-$line =
-    date("Y-m-d H:i:s") .
-    " | " .
-    $binary .
-    PHP_EOL;
 
-$result = file_put_contents(
-    $dataFile,
-    $line,
-    FILE_APPEND | LOCK_EX
-);
+$options = [
 
-if ($result === false) {
+    "http" => [
+
+        "method" => "POST",
+
+        "header" =>
+            "Content-Type: application/json\r\n" .
+            "Content-Length: " .
+            strlen($payload) .
+            "\r\n",
+
+        "content" => $payload,
+
+        "ignore_errors" => true,
+
+        "timeout" => 15
+
+    ]
+
+];
+
+
+$context =
+    stream_context_create(
+        $options
+    );
+
+
+$response =
+    file_get_contents(
+        $googleScriptUrl,
+        false,
+        $context
+    );
+
+
+// ==================================================
+// CHECK RESPONSE
+// ==================================================
+
+if ($response === false) {
 
     http_response_code(500);
 
     echo json_encode([
+
         "success" => false,
-        "message" => "Could not save data"
+
+        "message" =>
+            "Could not connect to Google Drive"
+
     ]);
 
     exit;
 }
 
-echo json_encode([
-    "success" => true,
-    "message" => "Binary data saved"
-]);
+
+$googleResponse =
+    json_decode(
+        $response,
+        true
+    );
+
+
+if (
+    isset($googleResponse["success"]) &&
+    $googleResponse["success"] === true
+) {
+
+    echo json_encode([
+
+        "success" => true,
+
+        "message" =>
+            "Binary saved to Google Drive"
+
+    ]);
+
+} else {
+
+    http_response_code(500);
+
+    echo json_encode([
+
+        "success" => false,
+
+        "message" =>
+            $googleResponse["message"]
+            ?? "Google Drive error"
+
+    ]);
+
+}
 
 ?>
