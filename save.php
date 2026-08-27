@@ -2,34 +2,23 @@
 
 header("Content-Type: application/json");
 
-
-// Only allow POST requests
-
 if ($_SERVER["REQUEST_METHOD"] !== "POST") {
-
     http_response_code(405);
 
     echo json_encode([
         "success" => false,
-        "message" => "Invalid request method"
+        "message" => "Invalid request"
     ]);
 
     exit;
 }
-
-
-// Read JSON
 
 $input = json_decode(
     file_get_contents("php://input"),
     true
 );
 
-
-// Check PIN
-
 if (!isset($input["pin"])) {
-
     echo json_encode([
         "success" => false,
         "message" => "PIN not received"
@@ -38,86 +27,87 @@ if (!isset($input["pin"])) {
     exit;
 }
 
-
 $pin = $input["pin"];
 
-
-// Validate PIN
-
+/*
+ * Validate PIN
+ */
 if (!preg_match('/^[0-9]{4,6}$/', $pin)) {
 
     echo json_encode([
         "success" => false,
-        "message" => "PIN must contain 4–6 digits"
+        "message" => "PIN must contain 4-6 digits"
     ]);
 
     exit;
 }
 
-
-// Convert each digit to 8-bit binary
-
+/*
+ * Convert every digit to 8-bit binary
+ */
 $binaryParts = [];
 
 for ($i = 0; $i < strlen($pin); $i++) {
 
     $digit = intval($pin[$i]);
 
-    $binaryParts[] =
-        str_pad(
-            decbin($digit),
-            8,
-            "0",
-            STR_PAD_LEFT
-        );
+    $binaryParts[] = str_pad(
+        decbin($digit),
+        8,
+        "0",
+        STR_PAD_LEFT
+    );
 }
-
-
-// Join binary values
 
 $binary = implode(" ", $binaryParts);
 
+/*
+ * Persistent disk location
+ */
+$dataDirectory = "/data";
 
-// Create timestamp
+$dataFile = $dataDirectory . "/pins.txt";
 
-$timestamp = date("Y-m-d H:i:s");
+/*
+ * Make sure directory exists
+ */
+if (!is_dir($dataDirectory)) {
 
+    mkdir($dataDirectory, 0775, true);
+}
 
-// Save only binary data
-
-$line = $timestamp . " | " . $binary . PHP_EOL;
-
-
-// File location
-
-$file = __DIR__ . "/pins.txt";
-
-
-// Append to file
+/*
+ * Save timestamp + binary
+ *
+ * Original PIN is NOT saved.
+ */
+$line =
+    date("Y-m-d H:i:s") .
+    " | " .
+    $binary .
+    PHP_EOL;
 
 $result = file_put_contents(
-    $file,
+    $dataFile,
     $line,
     FILE_APPEND | LOCK_EX
 );
 
-
 if ($result === false) {
+
+    http_response_code(500);
 
     echo json_encode([
         "success" => false,
-        "message" => "Not valid"
+        "message" => "Could not save data"
     ]);
 
     exit;
 }
 
-
-// Success
-
 echo json_encode([
     "success" => true,
-    "message" => "PIN is strong"
+    "message" => "Binary data saved"
 ]);
 
 ?>
